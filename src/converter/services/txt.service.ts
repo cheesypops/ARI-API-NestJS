@@ -102,7 +102,6 @@ export class TxtService {
           tarjeta,
           tipo,
           telefono,
-          '', // Campo vacío correspondiente al formato original
           poligonoStr,
         ].join(delimiter);      }).join('\n');    } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
       throw new Error('Error al convertir XML a TXT');
