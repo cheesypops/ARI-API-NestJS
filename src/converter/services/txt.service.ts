@@ -60,9 +60,8 @@ export class TxtService {
           client.telefono || '',
           poligonoStr,
         ].join(delimiter);
-      }).join('\n');
-    } catch (error) {
-      throw new Error(`Error al convertir JSON a TXT: ${error instanceof Error ? error.message : String(error)}`);
+      }).join('\n');    } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
+      throw new Error('Error al convertir JSON a TXT');
     }
   }
 
@@ -96,19 +95,18 @@ export class TxtService {
         
         // Convertir polígono a formato de coordenadas específico
         const poligonoStr = this.formatPolygonFromXml(client.poligono);
-        
-        return [
+          return [
           documento,
           nombres,
           apellidos,
           tarjeta,
           tipo,
           telefono,
+          '', // Campo vacío correspondiente al formato original
           poligonoStr,
-        ].join(delimiter);
-      }).join('\n');
-    } catch (error) {
-      throw new Error(`Error al convertir XML a TXT: ${error instanceof Error ? error.message : String(error)}`);    }
+        ].join(delimiter);      }).join('\n');    } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
+      throw new Error('Error al convertir XML a TXT');
+    }
   }  private getXmlValue(node: string | XmlTextNode | undefined): string {
     if (typeof node === 'string') {
       return node;
@@ -187,48 +185,58 @@ export class TxtService {
         return '';
       }
 
-      // Si es un objeto (nodo XML complejo), buscar el campo geoJSON
+      // Obtener el valor del nodo XML
+      const poligonoStr = this.getXmlValue(poligonoNode);
+      if (!poligonoStr) {
+        return '';
+      }
+
+      // El nuevo formato XML es: POLYGON ((coordenadas))
+      // Necesitamos convertirlo al formato requerido: ((coordenadas))
+      const polygonPattern = /^POLYGON\s*\(\((.+)\)\)$/i;
+      const match = poligonoStr.trim().match(polygonPattern);
+      
+      if (match && match[1]) {
+        // Ya tenemos las coordenadas en el formato correcto, solo agregar los paréntesis dobles
+        return `((${match[1]}))`;
+      }
+
+      // Si no es el nuevo formato, intentar como GeoJSON (formato anterior para compatibilidad)
       if (typeof poligonoNode === 'object' && poligonoNode !== null) {
         const nodeObj = poligonoNode as Record<string, unknown>;
         
-        // Buscar campo geoJSON en el nodo XML
+        // Buscar campo geoJSON en el nodo XML (formato anterior)
         if ('geoJSON' in nodeObj) {
           const geoJSONStr = this.getXmlValue(nodeObj.geoJSON as string | XmlTextNode);
           if (geoJSONStr) {
             try {
               const polygon = JSON.parse(geoJSONStr) as ClientData['poligono'];
               return this.formatPolygonCoordinates(polygon);
-            } catch {
+            } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
               // Si falla el parsing JSON, continuar
             }
           }
         }
         
-        // Si no hay geoJSON, intentar obtener el valor completo del nodo
-        const poligonoStr = this.getXmlValue(poligonoNode);
-        if (poligonoStr) {
-          try {
-            const polygon = JSON.parse(poligonoStr) as ClientData['poligono'];
-            return this.formatPolygonCoordinates(polygon);
-          } catch {
-            // Si falla, retornar vacío
-          }
+        // Intentar obtener el valor completo del nodo
+        try {
+          const polygon = JSON.parse(poligonoStr) as ClientData['poligono'];
+          return this.formatPolygonCoordinates(polygon);
+        } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
+          // Si falla, retornar vacío
         }
       } else {
-        // Si es un string simple, intentar parsear directamente
-        const poligonoStr = this.getXmlValue(poligonoNode);
-        if (poligonoStr) {
-          try {
-            const polygon = JSON.parse(poligonoStr) as ClientData['poligono'];
-            return this.formatPolygonCoordinates(polygon);
-          } catch {
-            // Si falla, retornar vacío
-          }
+        // Si es un string simple, intentar parsear como GeoJSON
+        try {
+          const polygon = JSON.parse(poligonoStr) as ClientData['poligono'];
+          return this.formatPolygonCoordinates(polygon);
+        } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
+          // Si falla, retornar vacío
         }
       }
 
       return '';
-    } catch {
+    } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
       return '';
     }
   }

@@ -27,18 +27,18 @@ export class JsonService {
   private validateAndEnhanceGeoJSONPolygon(polygon: GeoJSONPolygon): GeoJSONPolygon {
     // Validate basic structure
     if (!polygon || polygon.type !== 'Polygon' || !Array.isArray(polygon.coordinates)) {
-      throw new Error('Invalid GeoJSON Polygon structure');
+      throw new Error('Estructura de GeoJSON Polygon no válida');
     }
 
     // Validate coordinates structure
     if (polygon.coordinates.length === 0) {
-      throw new Error('GeoJSON Polygon must have at least one linear ring');
+      throw new Error('El polígono debe tener al menos un anillo de coordenadas');
     }
 
     // Validate each linear ring
     const validatedCoordinates = polygon.coordinates.map((ring, ringIndex) => {
       if (!Array.isArray(ring) || ring.length < 4) {
-        throw new Error(`Linear ring ${ringIndex} must have at least 4 coordinate pairs`);
+        throw new Error(`El anillo de coordenadas en el polígono ${ringIndex} debe ser un array con al menos 4 puntos (primer punto incluido)`);
       }
 
       // Ensure ring is closed (first and last points are the same)

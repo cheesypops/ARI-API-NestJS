@@ -52,15 +52,13 @@ export class XmlService {
           // Polígono GeoJSON (opcional)
           if (client.poligono) {
             this.addGeoJSONPolygonToXML(cliente, client.poligono);
-          }
-        } catch (error) {
-          throw new Error(`Error procesando cliente ${index + 1}: ${error instanceof Error ? error.message : String(error)}`);
+          }        } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
+          throw new Error('Error procesando cliente ' + (index + 1) + '.');
         }
       });
 
-      return root.end({ prettyPrint: true });
-    } catch (error) {
-      throw new Error(`Error generando XML: ${error instanceof Error ? error.message : String(error)}`);
+      return root.end({ prettyPrint: true });    } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
+      throw new Error('Error generando XML');
     }
   }
   private validateClient(client: ClientData, index: number): void {
@@ -99,44 +97,46 @@ export class XmlService {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
   }  /**
-   * Adds a GeoJSON polygon to XML in a structured, OGC-compliant way
+   * Adds a polygon to XML in the new format: POLYGON ((*coordinates*))
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private addGeoJSONPolygonToXML(clientElement: any, polygon: GeoJSONPolygon): void {
-    // Create a comprehensive GeoJSON structure in XML with proper OGC compliance
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-    const poligonoElement = clientElement.ele('poligono');
-    
-    // Add the complete GeoJSON as text for full compatibility and OGC standard compliance
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    poligonoElement.ele('geoJSON').txt(JSON.stringify(polygon));
-    
-    // Add structured elements for easier XML parsing
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-    poligonoElement.ele('type').txt(polygon.type);
-    
-    // Add coordinate summary
-    if (polygon.coordinates && polygon.coordinates.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const coordinatesSummary = poligonoElement.ele('coordinatesSummary');
+    try {
+      if (!polygon || polygon.type !== 'Polygon' || !polygon.coordinates || !Array.isArray(polygon.coordinates)) {
+        return;
+      }
+
+      // Obtener el primer anillo de coordenadas (anillo exterior)
+      const ring = polygon.coordinates[0];
+      if (!Array.isArray(ring) || ring.length === 0) {
+        return;
+      }
+
+      // Convertir cada par de coordenadas al formato "longitud latitud"
+      const coordinateStrings = ring.map((coord: number[]) => {
+        if (!Array.isArray(coord) || coord.length < 2) {
+          return '';
+        }
+        const lon = coord[0];
+        const lat = coord[1];
+        
+        if (typeof lon !== 'number' || typeof lat !== 'number') {
+          return '';
+        }
+        
+        return `${lon} ${lat}`;
+      }).filter(str => str !== '');
+
+      if (coordinateStrings.length === 0) {
+        return;
+      }
+
+      // Crear el formato POLYGON ((*coordenadas*))
+      const polygonText = `POLYGON ((${coordinateStrings.join(', ')}))`;
+      
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      coordinatesSummary.ele('rings').txt(polygon.coordinates.length.toString());
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      coordinatesSummary.ele('pointsInFirstRing').txt(polygon.coordinates[0].length.toString());
-    }
-    
-    // Add bounding box if present for enhanced GeoJSON OGC compliance
-    if (polygon.bbox && polygon.bbox.length === 4) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
-      const bboxElement = poligonoElement.ele('boundingBox');
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      bboxElement.ele('minLongitude').txt(polygon.bbox[0].toString());
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      bboxElement.ele('minLatitude').txt(polygon.bbox[1].toString());
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      bboxElement.ele('maxLongitude').txt(polygon.bbox[2].toString());
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      bboxElement.ele('maxLatitude').txt(polygon.bbox[3].toString());
+      clientElement.ele('poligono').txt(polygonText);
+    } catch (error) {// eslint-disable-line @typescript-eslint/no-unused-vars
+      // Si hay error, no agregar el polígono
     }
   }
 }
